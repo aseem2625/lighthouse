@@ -103,10 +103,9 @@ function saveArtifacts(artifacts, pathWithBasename) {
 /**
  * Filter traces and extract screenshots to prepare for saving.
  * @param {!Artifacts} artifacts
- * @param {string} title
  * @return {!Promise<!Array<{traceData: !Object, html: string}>>}
  */
-function prepareAssets(artifacts, title) {
+function prepareAssets(artifacts) {
   const passNames = Object.keys(artifacts.traces);
   const assets = [];
 
@@ -116,7 +115,7 @@ function prepareAssets(artifacts, title) {
     return chain.then(_ => artifacts.requestScreenshots(trace))
       .then(screenshots => {
         const traceData = Object.assign({}, trace);
-        const html = screenshotDump(screenshots, title);
+        const html = screenshotDump(screenshots);
 
         assets.push({
           traceData,
