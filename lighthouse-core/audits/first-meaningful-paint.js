@@ -19,6 +19,7 @@
 
 const Audit = require('./audit');
 const TracingProcessor = require('../lib/traces/tracing-processor');
+const log = require('../lib/log');
 const Formatter = require('../formatters/formatter');
 
 // Parameters (in ms) for log-normal CDF scoring. To see the curve:
@@ -53,9 +54,19 @@ class FirstMeaningfulPaint extends Audit {
   static audit(artifacts) {
     const trace = artifacts.traces[this.DEFAULT_PASS];
     return artifacts.requestTraceOfTab(trace).then(tabTrace => {
-      // Sometimes fMP is triggered before fCP
+      // If there was no firstMeaningfulPaint event found in the trace, the network idle detection
+      // may have not been triggered before Lighthouse finished tracing.
+      // In this case we'll use the last firstMeaningfulPaintCandidate we can find.
+      // However, if no candidates were found (a bogus trace, likely), we fail.
       if (!tabTrace.firstMeaningfulPaintEvt) {
-        throw new Error('No usable `firstMeaningfulPaint` event found in trace');
+        const fmpCand = 'firstMeaningfulPaintCandidate';
+        log.verbose('fmp-audit', `No firstMeaningfulPaint found, falling back to last ${fmpCand}`);
+        const candidates = tabTrace.processEvents.filter(e => e.name === fmpCand);
+
+        if (candidates.length === 0) {
+          throw new Error('No usable `firstMeaningfulPaint(Candidate)` events found in trace');
+        }
+        tabTrace.firstMeaningfulPaintEvt = candidates.pop();
       }
 
       // navigationStart is currently essential to FMP calculation.
