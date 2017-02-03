@@ -25,7 +25,6 @@
  *    Browser can request lighthousr rerun by sending POST request to URL: /rerun?id=[REPORT_ID]
  *      This will rerun lighthouse with additional cli-flags received from POST request data and
  *      return the new report id
- *    Flags can be access via URL: /flags?id=[REPORT_ID]
  */
 
 const http = require('http');
@@ -38,6 +37,8 @@ const PerfXReportGenerator = require('./report/perf-x-report-generator');
 
 let database;
 let fallbackReportId;
+let url;
+let config;
 /**
  * Start the server with an arbitrary port and open report page in the default browser.
  * @param {!Object} params A JSON contains lighthouse parameters
@@ -46,7 +47,10 @@ let fallbackReportId;
  */
 function hostExperiment(params, results) {
   return new Promise(resolve => {
-    database = new ExperimentDatabase(params.url, params.config);
+    url = params.url;
+    config = params.config;
+
+    database = new ExperimentDatabase();
     const id = database.saveData(params.flags, results);
     fallbackReportId = id;
 
@@ -69,8 +73,6 @@ function requestHandler(request, response) {
     if (request.method === 'GET') {
       if (pathname === '/') {
         reportRequestHandler(request, response);
-      } else if (pathname === '/flags') {
-        flagsRequestHandler(request, response);
       } else {
         throw new HTTPError(404);
       }
@@ -101,10 +103,10 @@ function reportRequestHandler(request, response) {
 
     const reportsMetadata = Object.keys(database.timeStamps).map(key => {
       const generatedTime = database.timeStamps[key];
-      return {url: database.url, reportHref: `/?id=${key}`, generatedTime};
+      return {url, reportHref: `/?id=${key}`, generatedTime};
     });
     reportsMetadata.sort((metadata1, metadata2) => {
-      return metadata1.generatedTime - metadata2.generatedTime;
+      return new Date(metadata1.generatedTime) - new Date(metadata2.generatedTime);
     });
     const reportsCatalog = {reportsMetadata, selectedReportHref: `/?id=${id}`};
 
@@ -113,15 +115,6 @@ function reportRequestHandler(request, response) {
 
     response.writeHead(200, {'Content-Type': 'text/html'});
     response.end(perfXReportGenerator.generateHTML(results, 'perf-x', reportsCatalog));
-  } catch (err) {
-    throw new HTTPError(404);
-  }
-}
-
-function flagsRequestHandler(request, response) {
-  try {
-    response.writeHead(200, {'Content-Type': 'text/json'});
-    response.end(JSON.stringify(database.getFlags(request.parsedUrl.query.id || fallbackReportId)));
   } catch (err) {
     throw new HTTPError(404);
   }
@@ -137,11 +130,15 @@ function rerunRequestHandler(request, response) {
       const additionalFlags = JSON.parse(message);
       Object.assign(flags, additionalFlags);
 
-      lighthouse(database.url, flags, database.config).then(results => {
+      lighthouse(url, flags, config).then(results => {
         results.artifacts = undefined;
         const id = database.saveData(flags, results);
         response.writeHead(200);
         response.end(id);
+      }).catch(err => {
+        log.error('PerformanceXServer', err.code, err);
+        response.writeHead(500);
+        response.end(http.STATUS_CODES[500]);
       });
     });
   } catch (err) {

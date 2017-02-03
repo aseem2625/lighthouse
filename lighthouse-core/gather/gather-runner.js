@@ -105,8 +105,12 @@ class GatherRunner {
     // We dont need to hold up the reporting for the reload/disconnect,
     // so we will not return a promise in here.
     log.log('status', 'Disconnecting from browser...');
-    driver.disconnect().catch(e => {
-      log.error('gather-runner disconnect', e);
+    driver.disconnect().catch(err => {
+      // Ignore disconnecting error if browser was already closed.
+      // See https://github.com/GoogleChrome/lighthouse/issues/1583
+      if (!(/close\/.*status: 500$/.test(err.message))) {
+        log.error('GatherRunner disconnect', err.message);
+      }
     });
   }
 
@@ -122,6 +126,23 @@ class GatherRunner {
         throw err;
       }
     });
+  }
+
+  /**
+   * Throws an error if the original network request failed or wasn't found.
+   * @param {string} url The URL of the original requested page.
+   * @param {{online: boolean}} driver
+   * @param {!Array<WebInspector.NetworkRequest>} networkRecords
+   */
+  static assertPageLoaded(url, driver, networkRecords) {
+    const mainRecord = networkRecords.find(record => record.url === url);
+    if (driver.online && (!mainRecord || mainRecord.failed)) {
+      const message = mainRecord ? mainRecord.localizedFailDescription : 'timeout reached';
+      log.error('GatherRunner', message);
+      const error = new Error(`Unable to load the page: ${message}`);
+      error.code = 'PAGE_LOAD_ERROR';
+      throw error;
+    }
   }
 
   /**
@@ -207,13 +228,8 @@ class GatherRunner {
       log.log('status', status);
       return driver.endNetworkCollect();
     }).then(networkRecords => {
-      const mainRecord = networkRecords.find(record => record.url === options.url);
-      if (driver.online && mainRecord.failed) {
-        log.error('GatherRunner', mainRecord.localizedFailDescription);
-        const error = new Error(`Unable to load the page: ${mainRecord.localizedFailDescription}`);
-        error.code = 'PAGE_LOAD_ERROR';
-        return Promise.reject(error);
-      }
+      GatherRunner.assertPageLoaded(options.url, driver, networkRecords);
+
       // Network records only given to gatherers if requested by config.
       config.recordNetwork && (passData.networkRecords = networkRecords);
       log.verbose('statusEnd', status);
