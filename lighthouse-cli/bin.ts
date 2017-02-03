@@ -249,6 +249,36 @@ function handleError(err: LighthouseError) {
   }
 }
 
+function saveResults(results: Results,
+                     flags: {output: any, outputPath: string, saveArtifacts: boolean, saveAssets: boolean}) {
+    let promise = Promise.resolve(results);
+    const cwd = process.cwd();
+    const configuredPath = !flags.outputPath || flags.outputPath === 'stdout' ?
+        assetSaver.getFilenamePrefix(results) :
+        flags.outputPath.replace(/\.\w{2,4}$/, '');
+    const outputPath = path.resolve(cwd, configuredPath);
+    const pathWithBasename = outputPath.includes(cwd) ?
+        outputPath.slice(cwd.length + 1) : outputPath;
+
+    // delete artifacts from result so reports won't include artifacts.
+    const artifacts = results.artifacts;
+    results.artifacts = undefined;
+
+    if (flags.saveArtifacts) {
+      assetSaver.saveArtifacts(artifacts, pathWithBasename);
+    }
+
+    if (flags.saveAssets) {
+      promise = promise.then(_ => assetSaver.saveAssets(artifacts, pathWithBasename));
+    }
+
+    if (flags.output === Printer.OutputMode[Printer.OutputMode.pretty]) {
+      promise = promise.then(_ => Printer.write(results, 'html', `${pathWithBasename}.report.html`));
+    }
+
+    return promise.then(_ => Printer.write(results, flags.output, flags.outputPath));
+}
+
 function runLighthouse(url: string,
                        flags: {port: number, skipAutolaunch: boolean, selectChrome: boolean, output: any,
                          outputPath: string, interactive: boolean, saveArtifacts: boolean, saveAssets: boolean},
@@ -259,33 +289,7 @@ function runLighthouse(url: string,
     .then(() => getDebuggableChrome(flags))
     .then(chrome => chromeLauncher = chrome)
     .then(() => lighthouse(url, flags, config))
-    .then((results: Results) => {
-      let promise = Promise.resolve(results);
-      const baseFilename = !flags.outputPath || flags.outputPath === 'stdout' ?
-          assetSaver.getFilenamePrefix(results) :
-          flags.outputPath.replace(/\.\w{2,4}$/, '');
-      const resolvedPath = path.resolve(process.cwd(), baseFilename);
-
-      // delete artifacts from result so reports won't include artifacts.
-      const artifacts = results.artifacts;
-      results.artifacts = undefined;
-
-      if (flags.saveArtifacts) {
-        promise = promise.then(_ => assetSaver.saveArtifacts(artifacts, resolvedPath));
-      }
-      if (flags.saveAssets) {
-        promise = promise.then(_ => assetSaver.saveAssets(artifacts, {
-          title: path.basename(resolvedPath),
-          path: resolvedPath
-        }));
-      }
-
-      if (flags.output === Printer.OutputMode[Printer.OutputMode.pretty]) {
-        promise = promise.then(_ => Printer.write(results, 'html', `${resolvedPath}.report.html`));
-      }
-
-      return promise.then(_ => Printer.write(results, flags.output, flags.outputPath));
-    })
+    .then((results: Results) => saveResults(results, flags))
     .then((results: Results) => {
       if (flags.interactive) {
         return performanceXServer.hostExperiment({url, flags, config}, results);

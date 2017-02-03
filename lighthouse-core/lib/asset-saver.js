@@ -47,13 +47,12 @@ function getFilenamePrefix(results) {
 /**
  * Generate basic HTML page of screenshot filmstrip
  * @param {!Array<{timestamp: number, datauri: string}>} screenshots
- * @param {string} title
  * @return {!string}
  */
-function screenshotDump(screenshots, title) {
+function screenshotDump(screenshots) {
   return `
   <!doctype html>
-  <title>screenshots ${title}</title>
+  <title>screenshots</title>
   <style>
 html {
     overflow-x: scroll;
@@ -90,15 +89,15 @@ img {
 /**
  * Save entire artifacts object to a single stringified file
  * @param {!Artifacts} artifacts
- * @param {!string} path
+ * @param {string} pathWithBasename
  */
 // Set to ignore because testing it would imply testing fs, which isn't strictly necessary.
 /* istanbul ignore next */
-function saveArtifacts(artifacts, path) {
+function saveArtifacts(artifacts, pathWithBasename) {
+  const fullPath = `${pathWithBasename}.artifacts.log`;
   // The networkRecords artifacts have circular references
-  const filename = `${path}.artifacts.log`;
-  fs.writeFileSync(filename, stringifySafe(artifacts));
-  log.log('artifacts file saved to disk', filename);
+  fs.writeFileSync(fullPath, stringifySafe(artifacts));
+  log.log('artifacts file saved to disk', fullPath);
 }
 
 /**
@@ -131,18 +130,18 @@ function prepareAssets(artifacts, title) {
 /**
  * Writes trace(s) and associated screenshot(s) to disk.
  * @param {!Artifacts} artifacts
- * @param {{path: string, title: string}} options
+ * @param {string} pathWithBasename
  * @return {!Promise}
  */
-function saveAssets(artifacts, options = {}) {
-  return prepareAssets(artifacts, options.title).then(assets => {
+function saveAssets(artifacts, pathWithBasename) {
+  return prepareAssets(artifacts).then(assets => {
     assets.forEach((data, index) => {
       const traceData = data.traceData;
-      const traceFilename = `${options.path}-${index}.trace.json`;
+      const traceFilename = `${pathWithBasename}-${index}.trace.json`;
       fs.writeFileSync(traceFilename, JSON.stringify(traceData, null, 2));
       log.log('trace file saved to disk', traceFilename);
 
-      const screenshotsFilename = `${options.path}-${index}.screenshots.html`;
+      const screenshotsFilename = `${pathWithBasename}-${index}.screenshots.html`;
       fs.writeFileSync(screenshotsFilename, data.html);
       log.log('screenshots saved to disk', screenshotsFilename);
     });
