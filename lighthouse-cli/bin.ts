@@ -256,9 +256,9 @@ function saveResults(results: Results,
     const configuredPath = !flags.outputPath || flags.outputPath === 'stdout' ?
         assetSaver.getFilenamePrefix(results) :
         flags.outputPath.replace(/\.\w{2,4}$/, '');
-    const outputPath = path.resolve(cwd, configuredPath);
-    const pathWithBasename = outputPath.includes(cwd) ?
-        outputPath.slice(cwd.length + 1) : outputPath;
+    const resolvedPath = path.resolve(cwd, configuredPath);
+    const pathWithBasename = resolvedPath.includes(cwd) ?
+        resolvedPath.slice(cwd.length + 1) : resolvedPath;
 
     // delete artifacts from result so reports won't include artifacts.
     const artifacts = results.artifacts;
