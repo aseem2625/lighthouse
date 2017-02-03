@@ -69,7 +69,7 @@ describe('asset-saver helper', () => {
       requestScreenshots: () => Promise.resolve(screenshotFilmstrip)
     };
 
-    assetSaver.saveAssets(artifacts, process.cwd() + '/the_file');
+    assetSaver.saveAssets(artifacts, dbwResults.audits, process.cwd() + '/the_file');
 
     it('trace file saved to disk with data', () => {
       const traceFilename = 'the_file-0.trace.json';
@@ -97,7 +97,7 @@ describe('asset-saver helper', () => {
         requestScreenshots: () => Promise.resolve([]),
       };
       const beforeCount = countEvents(dbwTrace);
-      return assetSaver.prepareAssets(mockArtifacts, dbwResults).then(preparedAssets => {
+      return assetSaver.prepareAssets(mockArtifacts, dbwResults.audits).then(preparedAssets => {
         const afterCount = countEvents(preparedAssets[0].traceData);
         const metricsSansNavStart = Metrics.metricsDefinitions.length - 1;
         assert.equal(afterCount, beforeCount + (2 * metricsSansNavStart), 'unexpected event count');

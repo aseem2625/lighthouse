@@ -269,7 +269,7 @@ function saveResults(results: Results,
     }
 
     if (flags.saveAssets) {
-      promise = promise.then(_ => assetSaver.saveAssets(artifacts, pathWithBasename));
+      promise = promise.then(_ => assetSaver.saveAssets(artifacts, results.audits, pathWithBasename));
     }
 
     if (flags.output === Printer.OutputMode[Printer.OutputMode.pretty]) {

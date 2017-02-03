@@ -104,9 +104,10 @@ function saveArtifacts(artifacts, pathWithBasename) {
 /**
  * Filter traces and extract screenshots to prepare for saving.
  * @param {!Artifacts} artifacts
+ * @param {!Audits} audits
  * @return {!Promise<!Array<{traceData: !Object, html: string}>>}
  */
-function prepareAssets(artifacts) {
+function prepareAssets(artifacts, audits) {
   const passNames = Object.keys(artifacts.traces);
   const assets = [];
 
@@ -118,8 +119,8 @@ function prepareAssets(artifacts) {
         const traceData = Object.assign({}, trace);
         const html = screenshotDump(screenshots);
 
-        if (results && results.audits) {
-          const evts = new Metrics(traceData.traceEvents, results.audits).generateFakeEvents();
+        if (audits) {
+          const evts = new Metrics(traceData.traceEvents, audits).generateFakeEvents();
           traceData.traceEvents.push(...evts);
         }
         assets.push({
@@ -134,11 +135,12 @@ function prepareAssets(artifacts) {
 /**
  * Writes trace(s) and associated screenshot(s) to disk.
  * @param {!Artifacts} artifacts
+ * @param {!Audits} audits
  * @param {string} pathWithBasename
  * @return {!Promise}
  */
-function saveAssets(artifacts, pathWithBasename) {
-  return prepareAssets(artifacts).then(assets => {
+function saveAssets(artifacts, audits, pathWithBasename) {
+  return prepareAssets(artifacts, audits).then(assets => {
     assets.forEach((data, index) => {
       const traceData = data.traceData;
       const traceFilename = `${pathWithBasename}-${index}.trace.json`;
