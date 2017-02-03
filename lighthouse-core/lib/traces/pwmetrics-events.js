@@ -145,7 +145,7 @@ class Metrics {
    *     { "pid": 89922,"tid":1295,"ts":77176783452,"ph":"b","cat":"blink.user_timing","name":"innermeasure","args":{},"tts":1257886,"id":"0xe66c67"}
    *     { "pid": 89922,"tid":1295,"ts":77176882592,"ph":"e","cat":"blink.user_timing","name":"innermeasure","args":{},"tts":1257898,"id":"0xe66c67"}
    * @param {{ts: number, id: string, name: string}} metric
-   * @param {number} navStartTs
+   * @param {{ts: number, id: string, name: string}} navStart
    * @return {!Array} Pair of trace events (start/end)
    */
   synthesizeEventPair(metric, navStart) {

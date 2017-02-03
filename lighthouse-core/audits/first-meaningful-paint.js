@@ -54,19 +54,8 @@ class FirstMeaningfulPaint extends Audit {
   static audit(artifacts) {
     const trace = artifacts.traces[this.DEFAULT_PASS];
     return artifacts.requestTraceOfTab(trace).then(tabTrace => {
-      // If there was no firstMeaningfulPaint event found in the trace, the network idle detection
-      // may have not been triggered before Lighthouse finished tracing.
-      // In this case we'll use the last firstMeaningfulPaintCandidate we can find.
-      // However, if no candidates were found (a bogus trace, likely), we fail.
       if (!tabTrace.firstMeaningfulPaintEvt) {
-        const fmpCand = 'firstMeaningfulPaintCandidate';
-        log.verbose('fmp-audit', `No firstMeaningfulPaint found, falling back to last ${fmpCand}`);
-        const candidates = tabTrace.processEvents.filter(e => e.name === fmpCand);
-
-        if (candidates.length === 0) {
-          throw new Error('No usable `firstMeaningfulPaint(Candidate)` events found in trace');
-        }
-        tabTrace.firstMeaningfulPaintEvt = candidates.pop();
+        throw new Error('No usable `firstMeaningfulPaint(Candidate)` events found in trace');
       }
 
       // navigationStart is currently essential to FMP calculation.
