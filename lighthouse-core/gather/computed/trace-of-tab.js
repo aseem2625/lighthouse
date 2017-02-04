@@ -60,6 +60,10 @@ class TraceOfTab extends ComputedArtifact {
     const navigationStart = frameEvents.filter(e =>
         e.name === 'navigationStart' && e.ts < firstPaint.ts).pop();
 
+    // FCP will follow at/after the FP
+    const firstContentfulPaint = frameEvents.find(e =>
+      e.name === 'firstContentfulPaint' && e.ts >= firstPaint.ts);
+
     // fMP will follow at/after the FP
     let firstMeaningfulPaint = frameEvents.find(e =>
         e.name === 'firstMeaningfulPaint' && e.ts >= firstPaint.ts);
@@ -73,13 +77,10 @@ class TraceOfTab extends ComputedArtifact {
       log.verbose('trace-of-tab', `No firstMeaningfulPaint found, falling back to last ${fmpCand}`);
       const lastCandidate = frameEvents.filter(e => e.name === fmpCand).pop();
       if (!lastCandidate) {
-        log.verbose('No `firstMeaningfulPaintCandidate` events found in trace');
+        log.verbose('trace-of-tab', 'No `firstMeaningfulPaintCandidate` events found in trace');
       }
       firstMeaningfulPaint = lastCandidate;
     }
-    // Grab any FCP after the FP
-    const firstContentfulPaint = frameEvents.find(e =>
-      e.name === 'firstContentfulPaint' && e.ts >= firstPaint.ts);
 
     // subset all trace events to just our tab's process (incl threads other than main)
     const processEvents = trace.traceEvents.filter(e => {
