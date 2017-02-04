@@ -19,7 +19,6 @@
 
 const Audit = require('./audit');
 const TracingProcessor = require('../lib/traces/tracing-processor');
-const log = require('../lib/log');
 const Formatter = require('../formatters/formatter');
 
 // Parameters (in ms) for log-normal CDF scoring. To see the curve:
